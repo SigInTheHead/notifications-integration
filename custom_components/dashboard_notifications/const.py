@@ -8,6 +8,8 @@ DOMAIN = "dashboard_notifications"
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 SERVICE_CREATE = "create"
+SERVICE_CREATE_TIMED = "create_timed"
+SERVICE_CREATE_SCHEDULED_EXPIRY = "create_scheduled_expiry"
 SERVICE_DISMISS = "dismiss"
 
 ATTR_ID = "id"
@@ -19,6 +21,7 @@ ATTR_ICON = "icon"
 ATTR_SEVERITY = "severity"
 ATTR_EXPIRES_IN = "expires_in"
 ATTR_EXPIRES_AT = "expires_at"
+ATTR_PERSISTENT = "persistent"
 
 CONF_TOPICS = "topics"
 CONF_TOPIC_ID = "id"

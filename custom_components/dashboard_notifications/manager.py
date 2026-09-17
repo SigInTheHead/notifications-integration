@@ -22,6 +22,7 @@ from .const import (
     ATTR_ID,
     ATTR_KEY,
     ATTR_MESSAGE,
+    ATTR_PERSISTENT,
     ATTR_SEVERITY,
     ATTR_TITLE,
     ATTR_TOPIC,
@@ -74,7 +75,7 @@ def _parse_duration(value: str | Mapping[str, int]) -> timedelta:
 
 
 def _parse_expiry(data: dict[str, Any], now: datetime) -> str | None:
-    """Return a normalized UTC expiry timestamp or None."""
+    """Validate and return a normalized UTC expiry timestamp or None."""
     has_duration = ATTR_EXPIRES_IN in data
     has_datetime = ATTR_EXPIRES_AT in data
     if has_duration and has_datetime:
@@ -172,6 +173,7 @@ class NotificationManager:
                 ATTR_MESSAGE: data[ATTR_MESSAGE],
                 ATTR_ICON: data.get(ATTR_ICON)
                 or DEFAULT_ICONS[data.get(ATTR_SEVERITY, "info")],
+                ATTR_PERSISTENT: bool(data.get(ATTR_PERSISTENT, False)),
                 "created_at": _as_utc_iso(now),
                 "expires_at": expiry,
             }

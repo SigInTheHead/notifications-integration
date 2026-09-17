@@ -16,8 +16,9 @@ from homeassistant.components import websocket_api
 
 from .const import (
     ATTR_EXPIRES_AT, ATTR_EXPIRES_IN, ATTR_ICON, ATTR_ID, ATTR_KEY, ATTR_MESSAGE,
-    ATTR_SEVERITY, ATTR_TITLE, ATTR_TOPIC, CONF_TOPICS, DATA_MANAGERS, DOMAIN,
-    PLATFORMS, SERVICE_CREATE, SERVICE_DISMISS, SEVERITIES, SIGNAL_FEED_UPDATED,
+    ATTR_PERSISTENT, ATTR_SEVERITY, ATTR_TITLE, ATTR_TOPIC, CONF_TOPICS,
+    DATA_MANAGERS, DOMAIN, PLATFORMS, SERVICE_CREATE, SERVICE_CREATE_SCHEDULED_EXPIRY,
+    SERVICE_CREATE_TIMED, SERVICE_DISMISS, SEVERITIES, SIGNAL_FEED_UPDATED,
     WS_TYPE_LIST, WS_TYPE_SUBSCRIBE,
 )
 from .manager import NotificationManager
@@ -33,15 +34,23 @@ DURATION_SCHEMA = vol.Any(
         vol.Optional("milliseconds"): vol.Coerce(int),
     }),
 )
-CREATE_SCHEMA = vol.Schema({
+CREATE_FIELDS = {
     vol.Required(ATTR_TOPIC): cv.string,
     vol.Required(ATTR_MESSAGE): cv.string,
     vol.Optional(ATTR_KEY): cv.string,
     vol.Optional(ATTR_TITLE): cv.string,
     vol.Optional(ATTR_ICON): cv.icon,
     vol.Optional(ATTR_SEVERITY, default="info"): vol.In(SEVERITIES),
-    vol.Optional(ATTR_EXPIRES_IN): DURATION_SCHEMA,
-    vol.Optional(ATTR_EXPIRES_AT): cv.string,
+    vol.Optional(ATTR_PERSISTENT, default=False): cv.boolean,
+}
+CREATE_SCHEMA = vol.Schema(CREATE_FIELDS)
+CREATE_TIMED_SCHEMA = vol.Schema({
+    **CREATE_FIELDS,
+    vol.Required(ATTR_EXPIRES_IN): DURATION_SCHEMA,
+})
+CREATE_SCHEDULED_EXPIRY_SCHEMA = vol.Schema({
+    **CREATE_FIELDS,
+    vol.Required(ATTR_EXPIRES_AT): cv.string,
 })
 
 
@@ -60,45 +69,87 @@ def _async_update_create_description(
     hass: HomeAssistant, manager: NotificationManager
 ) -> None:
     """Publish the live topic registry to Home Assistant's action editor."""
+    common_fields = {
+        ATTR_TOPIC: {
+            "name": "Topic",
+            "required": True,
+            "selector": {
+                "select": {
+                    "mode": "dropdown",
+                    "options": [
+                        {"label": topic["name"], "value": topic["id"]}
+                        for topic in manager.topics
+                    ],
+                }
+            },
+        },
+        ATTR_MESSAGE: {"name": "Message", "required": True, "selector": {"text": {}}},
+        ATTR_KEY: {"name": "Key", "selector": {"text": {}}},
+        ATTR_TITLE: {"name": "Title", "selector": {"text": {}}},
+        ATTR_ICON: {"name": "Icon", "selector": {"icon": {}}},
+        ATTR_SEVERITY: {
+            "name": "Severity",
+            "required": True,
+            "default": "info",
+            "selector": {
+                "select": {
+                    "mode": "dropdown",
+                    "options": [
+                        {"label": severity.title(), "value": severity}
+                        for severity in SEVERITIES
+                    ],
+                }
+            },
+        },
+        ATTR_PERSISTENT: {
+            "name": "Persistent",
+            "description": "Cannot be dismissed from a dashboard card.",
+            "required": True,
+            "default": False,
+            "selector": {"boolean": {}},
+        },
+    }
     async_set_service_schema(
         hass,
         DOMAIN,
         SERVICE_CREATE,
         {
             "name": "Create notification",
-            "description": "Add a feed item, or replace the existing item with the same key.",
+            "description": "Add a feed item with no automatic expiry, or replace one with the same key.",
+            "fields": common_fields,
+        },
+    )
+    async_set_service_schema(
+        hass,
+        DOMAIN,
+        SERVICE_CREATE_TIMED,
+        {
+            "name": "Create timed notification",
+            "description": "Add a feed item that expires after a duration.",
             "fields": {
-                ATTR_TOPIC: {
-                    "name": "Topic",
+                **common_fields,
+                ATTR_EXPIRES_IN: {
+                    "name": "Expires in",
                     "required": True,
-                    "selector": {
-                        "select": {
-                            "options": [
-                                {"label": topic["name"], "value": topic["id"]}
-                                for topic in manager.topics
-                            ]
-                        }
-                    },
+                    "selector": {"duration": {}},
                 },
-                ATTR_MESSAGE: {"name": "Message", "required": True, "selector": {"text": {"multiline": True}}},
-                ATTR_KEY: {"name": "Key", "selector": {"text": {}}},
-                ATTR_TITLE: {"name": "Title", "selector": {"text": {}}},
-                ATTR_ICON: {"name": "Icon", "selector": {"icon": {}}},
-                ATTR_SEVERITY: {
-                    "name": "Severity",
-                    "default": "info",
-                    "selector": {
-                        "select": {
-                            "mode": "dropdown",
-                            "options": [
-                                {"label": severity.title(), "value": severity}
-                                for severity in SEVERITIES
-                            ],
-                        }
-                    },
+            },
+        },
+    )
+    async_set_service_schema(
+        hass,
+        DOMAIN,
+        SERVICE_CREATE_SCHEDULED_EXPIRY,
+        {
+            "name": "Create scheduled expiry notification",
+            "description": "Add a feed item that expires at a date and time.",
+            "fields": {
+                **common_fields,
+                ATTR_EXPIRES_AT: {
+                    "name": "Expires at",
+                    "required": True,
+                    "selector": {"datetime": {}},
                 },
-                ATTR_EXPIRES_IN: {"name": "Expires in", "selector": {"duration": {}}},
-                ATTR_EXPIRES_AT: {"name": "Expires at", "selector": {"datetime": {}}},
             },
         },
     )
@@ -121,6 +172,8 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         )
 
     hass.services.async_register(DOMAIN, SERVICE_CREATE, async_create, schema=CREATE_SCHEMA, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_TIMED, async_create, schema=CREATE_TIMED_SCHEMA, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_SCHEDULED_EXPIRY, async_create, schema=CREATE_SCHEDULED_EXPIRY_SCHEMA, supports_response=SupportsResponse.OPTIONAL)
     hass.services.async_register(DOMAIN, SERVICE_DISMISS, async_dismiss, schema=DISMISS_SCHEMA)
     _register_websocket_commands(hass)
     return True

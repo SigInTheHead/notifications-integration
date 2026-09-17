@@ -1,19 +1,19 @@
 create:
   name: Create notification
-  description: Add a feed item, or replace the existing item with the same key.
-  fields:
+  description: Add a feed item with no automatic expiry, or replace one with the same key.
+  fields: &create_fields
     topic:
       name: Topic
       required: true
       selector:
         select:
+          mode: dropdown
           options: []
     message:
       name: Message
       required: true
       selector:
         text:
-          multiline: true
     key:
       name: Key
       selector:
@@ -28,6 +28,7 @@ create:
         icon:
     severity:
       name: Severity
+      required: true
       default: info
       selector:
         select:
@@ -41,14 +42,35 @@ create:
               value: warning
             - label: Error
               value: error
+    persistent:
+      name: Persistent
+      description: Cannot be dismissed from a dashboard card.
+      required: true
+      default: false
+      selector:
+        boolean:
+
+create_timed:
+  name: Create timed notification
+  description: Add a feed item that expires after a duration.
+  fields:
+    <<: *create_fields
     expires_in:
       name: Expires in
-      description: Optional duration before this notification is removed.
+      description: Duration before this notification is removed.
+      required: true
       selector:
         duration:
+
+create_scheduled_expiry:
+  name: Create scheduled expiry notification
+  description: Add a feed item that expires at a date and time.
+  fields:
+    <<: *create_fields
     expires_at:
       name: Expires at
-      description: Optional date and time at which this notification is removed.
+      description: Date and time at which this notification is removed.
+      required: true
       selector:
         datetime:
 dismiss:

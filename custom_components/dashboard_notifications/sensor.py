@@ -6,6 +6,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
     async_get_current_platform,
@@ -34,6 +35,11 @@ async def async_setup_entry(
     ])
     platform = async_get_current_platform()
 
+    async def async_remove_topic_sensor(sensor: TopicNotificationCountSensor) -> None:
+        """Remove an obsolete topic sensor and its registry entry."""
+        await platform.async_remove_entity(sensor.entity_id)
+        er.async_get(hass).async_remove(sensor.entity_id)
+
     @callback
     def async_refresh_topic_sensors(entry_id: str) -> None:
         """Synchronize sensor entities with topic registry/feed changes."""
@@ -53,7 +59,7 @@ async def async_setup_entry(
         removed_ids = topic_sensors.keys() - active_ids
         for topic_id in removed_ids:
             sensor = topic_sensors.pop(topic_id)
-            hass.async_create_task(platform.async_remove_entity(sensor.entity_id))
+            hass.async_create_task(async_remove_topic_sensor(sensor))
 
     entry.async_on_unload(
         async_dispatcher_connect(hass, SIGNAL_FEED_UPDATED, async_refresh_topic_sensors)
