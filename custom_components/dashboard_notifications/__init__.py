@@ -253,7 +253,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 "name": "dashboard-notifications-settings-panel",
                 "embed_iframe": False,
                 "trust_external": False,
-                "module_url": "/dashboard-notifications-settings/dashboard-notifications-settings.js?v=5",
+                "module_url": "/dashboard-notifications-settings/dashboard-notifications-settings.js?v=6",
             }
         },
     )

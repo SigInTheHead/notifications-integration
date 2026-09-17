@@ -10,7 +10,12 @@ class DashboardNotificationsSettingsPanel extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    this._load();
+    // Home Assistant assigns a new hass object for every state update. Reloading
+    // here tears down open picker dialogs, so only load settings once per panel.
+    if (!this._loaded) {
+      this._loaded = true;
+      this._load();
+    }
   }
 
   async _load() {
