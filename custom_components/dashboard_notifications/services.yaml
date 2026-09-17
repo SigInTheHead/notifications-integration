@@ -1,0 +1,63 @@
+create:
+  name: Create notification
+  description: Add a feed item, or replace the existing item with the same key.
+  fields:
+    topic:
+      name: Topic
+      required: true
+      selector:
+        select:
+          options: []
+    message:
+      name: Message
+      required: true
+      selector:
+        text:
+          multiline: true
+    key:
+      name: Key
+      selector:
+        text:
+    title:
+      name: Title
+      selector:
+        text:
+    icon:
+      name: Icon
+      selector:
+        icon:
+    severity:
+      name: Severity
+      default: info
+      selector:
+        select:
+          mode: dropdown
+          options:
+            - label: Info
+              value: info
+            - label: Success
+              value: success
+            - label: Warning
+              value: warning
+            - label: Error
+              value: error
+    expires_in:
+      name: Expires in
+      description: Optional duration before this notification is removed.
+      selector:
+        duration:
+    expires_at:
+      name: Expires at
+      description: Optional date and time at which this notification is removed.
+      selector:
+        datetime:
+dismiss:
+  name: Dismiss notification
+  description: Dismiss an item by its integration ID or replacement key.
+  fields:
+    id:
+      selector:
+        text:
+    key:
+      selector:
+        text:

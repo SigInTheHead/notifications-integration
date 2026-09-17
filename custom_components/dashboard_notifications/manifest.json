@@ -1,0 +1,11 @@
+{
+  "domain": "dashboard_notifications",
+  "name": "Dashboard Notifications",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/SigInTheHead/notifications-integration",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "requirements": [],
+  "version": "0.1.1"
+}

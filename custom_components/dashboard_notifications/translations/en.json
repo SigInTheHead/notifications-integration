@@ -1,0 +1,52 @@
+{
+  "config": {
+    "abort": {
+      "single_instance_allowed": "Only one Dashboard Notifications feed can be configured."
+    },
+    "step": {
+      "user": {
+        "title": "Dashboard Notifications",
+        "description": "Create the shared dashboard notification feed."
+      }
+    }
+  },
+  "options": {
+    "abort": {
+      "no_topics": "There are no topics to manage."
+    },
+    "error": {
+      "invalid_name": "Enter a topic name.",
+      "duplicate_name": "A topic with this name already exists."
+    },
+    "step": {
+      "init": {
+        "title": "Manage topics",
+        "description": "Add, rename, or remove the topics used to filter the notification feed.",
+        "menu_options": {
+          "add_topic": "Add topic",
+          "rename_topic": "Rename topic",
+          "remove_topic": "Remove topic"
+        }
+      },
+      "add_topic": {
+        "title": "Add topic",
+        "data": {
+          "name": "Topic name"
+        }
+      },
+      "rename_topic": {
+        "title": "Rename topic",
+        "data": {
+          "id": "Topic",
+          "name": "New name"
+        }
+      },
+      "remove_topic": {
+        "title": "Remove topic",
+        "data": {
+          "id": "Topic"
+        }
+      }
+    }
+  }
+}
