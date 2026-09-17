@@ -27,7 +27,10 @@ from .const import (
     ATTR_TITLE,
     ATTR_TOPIC,
     CONF_TOPIC_ID,
+    CONF_TOPIC_COLOR,
+    CONF_TOPIC_ICON,
     CONF_TOPIC_NAME,
+    DEFAULT_SEVERITY_COLORS,
     DEFAULT_ICONS,
     DOMAIN,
     SEVERITIES,
@@ -99,10 +102,18 @@ def _parse_expiry(data: dict[str, Any], now: datetime) -> str | None:
 class NotificationManager:
     """Own the active notification feed for one config entry."""
 
-    def __init__(self, hass: HomeAssistant, entry_id: str, topics: Iterable[dict[str, str]]) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry_id: str,
+        topics: Iterable[dict[str, str]],
+        severity_colors: Mapping[str, Any] | None = None,
+    ) -> None:
         self.hass = hass
         self.entry_id = entry_id
         self._topics = self._normalise_topics(topics)
+        self._configured_severity_colors = dict(severity_colors or {})
+        self._severity_colors = self._normalise_severity_colors(self._configured_severity_colors)
         self._items: list[dict[str, Any]] = []
         self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"{STORAGE_KEY_PREFIX}.{entry_id}")
         self._lock = asyncio.Lock()
@@ -110,14 +121,47 @@ class NotificationManager:
 
     @staticmethod
     def _normalise_topics(topics: Iterable[dict[str, str]]) -> dict[str, dict[str, str]]:
-        return {
-            topic[CONF_TOPIC_ID]: {
+        normalised = {}
+        for topic in topics:
+            if not topic.get(CONF_TOPIC_ID) or not topic.get(CONF_TOPIC_NAME):
+                continue
+            item = {
                 CONF_TOPIC_ID: topic[CONF_TOPIC_ID],
                 CONF_TOPIC_NAME: topic[CONF_TOPIC_NAME],
             }
-            for topic in topics
-            if topic.get(CONF_TOPIC_ID) and topic.get(CONF_TOPIC_NAME)
-        }
+            if isinstance(topic.get(CONF_TOPIC_ICON), str) and topic[CONF_TOPIC_ICON]:
+                item[CONF_TOPIC_ICON] = topic[CONF_TOPIC_ICON]
+            if isinstance(topic.get(CONF_TOPIC_COLOR), str) and topic[CONF_TOPIC_COLOR]:
+                item[CONF_TOPIC_COLOR] = topic[CONF_TOPIC_COLOR]
+            normalised[topic[CONF_TOPIC_ID]] = item
+        return normalised
+
+    @staticmethod
+    def _normalise_severity_colors(colors: Mapping[str, Any] | None) -> dict[str, str]:
+        """Convert configured RGB values into safe CSS color values."""
+        configured = colors or {}
+        result = {}
+        for severity, default in DEFAULT_SEVERITY_COLORS.items():
+            value = configured.get(severity, default)
+            if isinstance(value, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", value):
+                result[severity] = value.lower()
+                continue
+            if isinstance(value, str) and re.fullmatch(r"[a-z]+(?:-[a-z]+)*", value):
+                # Values from Home Assistant's ui_color selector correspond to
+                # its theme colour variables (for example, blue or deep-purple).
+                result[severity] = f"var(--{value}-color)"
+                continue
+            # Configured RGB lists were used by the first implementation;
+            # retain them so users are not forced to re-enter their colours.
+            if isinstance(value, (list, tuple)) and len(value) == 3:
+                try:
+                    red, green, blue = (max(0, min(255, int(channel))) for channel in value)
+                    result[severity] = f"#{red:02x}{green:02x}{blue:02x}"
+                    continue
+                except (TypeError, ValueError):
+                    pass
+            result[severity] = default
+        return result
 
     async def async_load(self) -> None:
         """Load saved items and remove entries no longer valid."""
@@ -138,18 +182,48 @@ class NotificationManager:
 
     def feed(self) -> list[dict[str, Any]]:
         """Return active feed items in chronological order."""
-        return sorted((item.copy() for item in self._items), key=lambda item: item["created_at"])
+        items = []
+        for item in self._items:
+            result = item.copy()
+            topic_color = self._topics.get(item[ATTR_TOPIC], {}).get(CONF_TOPIC_COLOR)
+            if topic_color:
+                result["topic_color"] = self._as_css_color(topic_color)
+            items.append(result)
+        return sorted(items, key=lambda item: item["created_at"])
 
-    async def async_update_topics(self, topics: Iterable[dict[str, str]]) -> None:
-        """Apply registry changes and delete feed items for removed topics."""
+    @staticmethod
+    def _as_css_color(value: str) -> str | None:
+        if re.fullmatch(r"#[0-9a-fA-F]{6}", value):
+            return value.lower()
+        if re.fullmatch(r"[a-z]+(?:-[a-z]+)*", value):
+            return f"var(--{value}-color)"
+        return None
+
+    @property
+    def severity_colors(self) -> dict[str, str]:
+        """Return the integration-wide severity colours for dashboard cards."""
+        return self._severity_colors.copy()
+
+    async def async_update_configuration(
+        self,
+        topics: Iterable[dict[str, str]],
+        severity_colors: Mapping[str, Any] | None,
+    ) -> None:
+        """Apply topic and severity-colour configuration changes."""
         async with self._lock:
             self._topics = self._normalise_topics(topics)
+            self._configured_severity_colors = dict(severity_colors or {})
+            self._severity_colors = self._normalise_severity_colors(self._configured_severity_colors)
             before = len(self._items)
             self._items = [item for item in self._items if item[ATTR_TOPIC] in self._topics]
             if len(self._items) != before:
                 await self._async_save()
             self._schedule_expiry()
         self._notify()
+
+    async def async_update_topics(self, topics: Iterable[dict[str, str]]) -> None:
+        """Apply registry changes and delete feed items for removed topics."""
+        await self.async_update_configuration(topics, self._configured_severity_colors)
 
     async def async_create(self, data: dict[str, Any]) -> str:
         """Create or replace a feed item and return its integration ID."""
@@ -172,6 +246,7 @@ class NotificationManager:
                 ATTR_TOPIC: topic_id,
                 ATTR_MESSAGE: data[ATTR_MESSAGE],
                 ATTR_ICON: data.get(ATTR_ICON)
+                or self._topics[topic_id].get(CONF_TOPIC_ICON)
                 or DEFAULT_ICONS[data.get(ATTR_SEVERITY, "info")],
                 ATTR_PERSISTENT: bool(data.get(ATTR_PERSISTENT, False)),
                 "created_at": _as_utc_iso(now),

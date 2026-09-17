@@ -12,7 +12,8 @@
   },
   "options": {
     "abort": {
-      "no_topics": "There are no topics to manage."
+      "no_topics": "There are no topics to manage.",
+      "manage_in_settings_panel": "Manage Dashboard Notifications from its sidebar settings page."
     },
     "error": {
       "invalid_name": "Enter a topic name.",
@@ -21,11 +22,12 @@
     "step": {
       "init": {
         "title": "Manage topics",
-        "description": "Add, rename, or remove the topics used to filter the notification feed.",
+        "description": "Manage topics and the colours used by dashboard notification cards.",
         "menu_options": {
           "add_topic": "Add topic",
           "rename_topic": "Rename topic",
-          "remove_topic": "Remove topic"
+          "remove_topic": "Remove topic",
+          "severity_colors": "Set severity colours"
         }
       },
       "add_topic": {
@@ -45,6 +47,16 @@
         "title": "Remove topic",
         "data": {
           "id": "Topic"
+        }
+      },
+      "severity_colors": {
+        "title": "Set severity colours",
+        "description": "Choose the colours dashboard cards use for each notification severity.",
+        "data": {
+          "info": "Info colour",
+          "success": "Success colour",
+          "warning": "Warning colour",
+          "error": "Error colour"
         }
       }
     }

@@ -24,10 +24,19 @@ ATTR_EXPIRES_AT = "expires_at"
 ATTR_PERSISTENT = "persistent"
 
 CONF_TOPICS = "topics"
+CONF_SEVERITY_COLORS = "severity_colors"
 CONF_TOPIC_ID = "id"
 CONF_TOPIC_NAME = "name"
+CONF_TOPIC_ICON = "icon"
+CONF_TOPIC_COLOR = "color"
 
 SEVERITIES = ("info", "success", "warning", "error")
+DEFAULT_SEVERITY_COLORS = {
+    "info": "blue",
+    "success": "green",
+    "warning": "orange",
+    "error": "red",
+}
 DEFAULT_ICONS = {
     "info": "mdi:information-outline",
     "success": "mdi:check-circle-outline",
@@ -42,3 +51,8 @@ SIGNAL_FEED_UPDATED = f"{DOMAIN}_feed_updated"
 
 WS_TYPE_LIST = f"{DOMAIN}/list"
 WS_TYPE_SUBSCRIBE = f"{DOMAIN}/subscribe"
+WS_TYPE_SETTINGS = f"{DOMAIN}/settings"
+WS_TYPE_SETTINGS_ADD_TOPIC = f"{DOMAIN}/settings/add_topic"
+WS_TYPE_SETTINGS_RENAME_TOPIC = f"{DOMAIN}/settings/rename_topic"
+WS_TYPE_SETTINGS_REMOVE_TOPIC = f"{DOMAIN}/settings/remove_topic"
+WS_TYPE_SETTINGS_SET_COLORS = f"{DOMAIN}/settings/set_colors"
