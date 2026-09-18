@@ -53,13 +53,15 @@ create:
       name: Actions
       description: >-
         Optional list of icon actions. Each item requires icon, label, and action;
-        target and data are optional. Use YAML/object mode to enter the list.
+        target, data, and dismiss are optional. Set dismiss to true to remove the
+        notification after the action succeeds. Use YAML/object mode to enter the list.
       example:
         - icon: mdi:check
           label: Mark complete
           action: input_button.press
           target:
             entity_id: input_button.washer_emptied
+          dismiss: true
       selector:
         object:
 

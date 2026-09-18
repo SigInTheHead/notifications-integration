@@ -47,6 +47,7 @@ NOTIFICATION_ACTION_SCHEMA = vol.Schema({
     vol.Required("action"): cv.service,
     vol.Optional("target"): dict,
     vol.Optional("data"): dict,
+    vol.Optional("dismiss", default=False): cv.boolean,
 })
 NOTIFICATION_ACTIONS_SCHEMA = vol.Schema([NOTIFICATION_ACTION_SCHEMA])
 CREATE_FIELDS = {
@@ -195,7 +196,7 @@ def _async_update_create_description(
         },
         ATTR_ACTIONS: {
             "name": "Actions",
-            "description": "Optional icon actions. Each item requires icon, label, and action; target and data are optional.",
+            "description": "Optional icon actions. Each item requires icon, label, and action; target, data, and dismiss are optional.",
             "selector": {"object": {}},
         },
     }
