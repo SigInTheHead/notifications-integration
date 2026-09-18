@@ -38,17 +38,16 @@ class DashboardNotificationsSettingsPanel extends HTMLElement {
       h2 { margin: 0; font-size: 1.2rem; font-weight: 500; }
       ha-card { display: block; margin: 16px 0; padding: 20px; }
       .description { color: var(--secondary-text-color); margin: 8px 0 20px; }
-      .add-topic { display: flex; gap: 12px; align-items: center; }
-      .add-topic ha-textfield { flex: 1; }
+      .topic-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
       .topics { display: grid; gap: 10px; }
       .topic { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
       .topic ha-form { min-width: 0; margin: 0 !important; }
       .actions { display: flex; gap: 8px; align-self: center; align-items: center; transform: translateY(-14px); }
       button { border: 0; border-radius: 18px; padding: 9px 16px; font: inherit; color: var(--text-primary-color); background: var(--primary-color); cursor: pointer; }
       button.secondary { color: var(--primary-text-color); background: var(--secondary-background-color); }
-      button.icon { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; color: var(--secondary-text-color); background: transparent; }
+      button.icon { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; color: var(--secondary-text-color); background: transparent; }
       button.icon:hover { color: var(--error-color); background: var(--secondary-background-color); }
-      button.icon ha-icon { --mdc-icon-size: 20px; }
+      button.icon ha-icon { --mdc-icon-size: 22px; }
       button:disabled { opacity: .5; cursor: default; }
       .empty { color: var(--secondary-text-color); font-style: italic; }
       ha-alert { margin-bottom: 16px; }
@@ -61,17 +60,16 @@ class DashboardNotificationsSettingsPanel extends HTMLElement {
       <div id="colors"></div>
     </ha-card>
     <ha-card>
-      <h2>Topics</h2>
+      <div class="topic-header"><h2>Topics</h2><button id="add-topic">Add topic</button></div>
       <div class="description">Topics control which notifications a dashboard card can show. Removing a topic also removes its active notifications.</div>
-      <div class="add-topic"><ha-textfield id="new-topic" label="Topic name"></ha-textfield><button id="add-topic">Add topic</button></div>
       <div class="topics" id="topics"></div>
     </ha-card>`;
     if (!this._settings) return;
     this._renderColorForm();
     this._renderTopics();
-    this._root.querySelector("#add-topic").addEventListener("click", () => this._addTopic());
-    this._root.querySelector("#new-topic").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") this._addTopic();
+    this._root.querySelector("#add-topic").addEventListener("click", () => {
+      this._addingTopic = true;
+      this._render();
     });
   }
 
@@ -95,11 +93,19 @@ class DashboardNotificationsSettingsPanel extends HTMLElement {
 
   _renderTopics() {
     const container = this._root.querySelector("#topics");
-    if (!this._settings.topics.length) {
+    if (this._addingTopic) {
+      container.appendChild(this._topicRow({ name: "", icon: undefined, color: undefined }, true));
+    }
+    if (!this._settings.topics.length && !this._addingTopic) {
       container.innerHTML = '<div class="empty">No topics have been created.</div>';
       return;
     }
     for (const topic of this._settings.topics) {
+      container.appendChild(this._topicRow(topic));
+    }
+  }
+
+  _topicRow(topic, isNew = false) {
       const row = document.createElement("div");
       row.className = "topic";
       const form = document.createElement("ha-form");
@@ -123,12 +129,14 @@ class DashboardNotificationsSettingsPanel extends HTMLElement {
       form.addEventListener("value-changed", (event) => { data = { ...data, ...event.detail.value }; });
       const actions = document.createElement("div");
       actions.className = "actions";
-      const save = this._button("Save", "secondary", () => this._renameTopic(topic.id, data));
-      const remove = this._iconButton("mdi:delete-outline", "Remove topic", () => this._removeTopic(topic.id, topic.name));
-      actions.append(save, remove);
+      actions.append(this._button("Save", "secondary", () => isNew ? this._createTopic(data) : this._renameTopic(topic.id, data)));
+      if (isNew) {
+        actions.append(this._iconButton("mdi:close", "Cancel adding topic", () => this._cancelNewTopic()));
+      } else {
+        actions.append(this._iconButton("mdi:delete-outline", "Remove topic", () => this._removeTopic(topic.id, topic.name)));
+      }
       row.append(form, actions);
-      container.appendChild(row);
-    }
+      return row;
   }
 
   _button(label, className, handler) {
@@ -147,18 +155,58 @@ class DashboardNotificationsSettingsPanel extends HTMLElement {
     return button;
   }
 
-  async _addTopic() {
-    const input = this._root.querySelector("#new-topic");
-    await this._call(`${DOMAIN}/settings/add_topic`, { name: input.value });
+  async _createTopic(data) {
+    await this._call(`${DOMAIN}/settings/add_topic`, data);
+    if (!this._error) {
+      this._addingTopic = false;
+      this._render();
+    }
+  }
+
+  _cancelNewTopic() {
+    this._addingTopic = false;
+    this._error = undefined;
+    this._render();
   }
 
   async _renameTopic(id, data) {
-    await this._call(`${DOMAIN}/settings/rename_topic`, { id, ...data });
+    await this._call(`${DOMAIN}/settings/rename_topic`, { topic_id: id, ...data });
   }
 
   async _removeTopic(id, name) {
-    if (!window.confirm(`Remove “${name}”? Active notifications in this topic will also be removed.`)) return;
-    await this._call(`${DOMAIN}/settings/remove_topic`, { id });
+    const dialog = document.createElement("ha-dialog");
+    dialog.hass = this._hass;
+    dialog.setAttribute("header-title", "Remove topic?");
+    dialog.innerHTML = `<div>Remove “${this._escape(name)}”? Its active notifications will also be removed.</div>`;
+    const closeDialog = () => {
+      dialog.open = false;
+      dialog.remove();
+    };
+
+    const footer = document.createElement("ha-dialog-footer");
+    footer.slot = "footer";
+    const cancel = document.createElement("ha-button");
+    cancel.slot = "secondaryAction";
+    cancel.setAttribute("appearance", "plain");
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", closeDialog);
+    const remove = document.createElement("ha-button");
+    remove.slot = "primaryAction";
+    remove.setAttribute("variant", "danger");
+    remove.textContent = "Remove";
+    remove.addEventListener("click", async () => {
+      closeDialog();
+      await this._confirmRemoveTopic(id);
+    });
+    footer.append(cancel, remove);
+    dialog.append(footer);
+    this._root.append(dialog);
+    dialog.open = true;
+    dialog.addEventListener("closed", () => dialog.remove(), { once: true });
+  }
+
+  async _confirmRemoveTopic(id) {
+    await this._call(`${DOMAIN}/settings/remove_topic`, { topic_id: id });
   }
 
   async _call(type, data) {

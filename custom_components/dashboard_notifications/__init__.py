@@ -253,7 +253,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 "name": "dashboard-notifications-settings-panel",
                 "embed_iframe": False,
                 "trust_external": False,
-                "module_url": "/dashboard-notifications-settings/dashboard-notifications-settings.js?v=6",
+                "module_url": "/dashboard-notifications-settings/dashboard-notifications-settings.js?v=16",
             }
         },
     )
@@ -307,6 +307,8 @@ def _register_websocket_commands(hass: HomeAssistant) -> None:
     @websocket_api.websocket_command({
         vol.Required("type"): WS_TYPE_SETTINGS_ADD_TOPIC,
         vol.Required(CONF_TOPIC_NAME): cv.string,
+        vol.Optional(CONF_TOPIC_ICON): vol.Any(cv.string, None),
+        vol.Optional(CONF_TOPIC_COLOR): vol.Any(cv.string, None),
     })
     @websocket_api.require_admin
     @websocket_api.async_response
@@ -319,15 +321,23 @@ def _register_websocket_commands(hass: HomeAssistant) -> None:
         if any(topic[CONF_TOPIC_NAME].casefold() == name.casefold() for topic in settings[CONF_TOPICS]):
             connection.send_error(msg["id"], "duplicate_name", "A topic with this name already exists")
             return
+        try:
+            defaults = _topic_defaults(msg)
+        except HomeAssistantError as err:
+            connection.send_error(msg["id"], "invalid_topic_default", str(err))
+            return
         _async_update_settings(
             hass,
-            **{CONF_TOPICS: settings[CONF_TOPICS] + [{CONF_TOPIC_ID: str(uuid4()), CONF_TOPIC_NAME: name}]},
+            **{CONF_TOPICS: settings[CONF_TOPICS] + [{CONF_TOPIC_ID: str(uuid4()), CONF_TOPIC_NAME: name, **defaults}]},
         )
         connection.send_result(msg["id"], _settings_payload(hass))
 
     @websocket_api.websocket_command({
         vol.Required("type"): WS_TYPE_SETTINGS_RENAME_TOPIC,
-        vol.Required(CONF_TOPIC_ID): cv.string,
+        # `id` is reserved for the WebSocket request ID. Do not reuse it for
+        # the topic identifier: the frontend client replaces it before the
+        # command reaches this handler.
+        vol.Required("topic_id"): cv.string,
         vol.Required(CONF_TOPIC_NAME): cv.string,
         vol.Optional(CONF_TOPIC_ICON): vol.Any(cv.string, None),
         vol.Optional(CONF_TOPIC_COLOR): vol.Any(cv.string, None),
@@ -340,10 +350,10 @@ def _register_websocket_commands(hass: HomeAssistant) -> None:
         if not name:
             connection.send_error(msg["id"], "invalid_name", "Enter a topic name")
             return
-        if not any(topic[CONF_TOPIC_ID] == msg[CONF_TOPIC_ID] for topic in settings[CONF_TOPICS]):
+        if not any(topic[CONF_TOPIC_ID] == msg["topic_id"] for topic in settings[CONF_TOPICS]):
             connection.send_error(msg["id"], "not_found", "Topic was not found")
             return
-        if any(topic[CONF_TOPIC_ID] != msg[CONF_TOPIC_ID] and topic[CONF_TOPIC_NAME].casefold() == name.casefold() for topic in settings[CONF_TOPICS]):
+        if any(topic[CONF_TOPIC_ID] != msg["topic_id"] and topic[CONF_TOPIC_NAME].casefold() == name.casefold() for topic in settings[CONF_TOPICS]):
             connection.send_error(msg["id"], "duplicate_name", "A topic with this name already exists")
             return
         try:
@@ -353,20 +363,20 @@ def _register_websocket_commands(hass: HomeAssistant) -> None:
             return
         _async_update_settings(hass, **{CONF_TOPICS: [
             {CONF_TOPIC_ID: topic[CONF_TOPIC_ID], CONF_TOPIC_NAME: name, **defaults}
-            if topic[CONF_TOPIC_ID] == msg[CONF_TOPIC_ID] else topic
+            if topic[CONF_TOPIC_ID] == msg["topic_id"] else topic
             for topic in settings[CONF_TOPICS]
         ]})
         connection.send_result(msg["id"], _settings_payload(hass))
 
     @websocket_api.websocket_command({
         vol.Required("type"): WS_TYPE_SETTINGS_REMOVE_TOPIC,
-        vol.Required(CONF_TOPIC_ID): cv.string,
+        vol.Required("topic_id"): cv.string,
     })
     @websocket_api.require_admin
     @websocket_api.async_response
     async def websocket_remove_topic(hass: HomeAssistant, connection, msg):
         settings = _settings_payload(hass)
-        topics = [topic for topic in settings[CONF_TOPICS] if topic[CONF_TOPIC_ID] != msg[CONF_TOPIC_ID]]
+        topics = [topic for topic in settings[CONF_TOPICS] if topic[CONF_TOPIC_ID] != msg["topic_id"]]
         if len(topics) == len(settings[CONF_TOPICS]):
             connection.send_error(msg["id"], "not_found", "Topic was not found")
             return
