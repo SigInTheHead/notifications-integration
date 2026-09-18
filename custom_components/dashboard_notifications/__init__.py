@@ -19,7 +19,7 @@ from homeassistant.components import frontend, websocket_api
 from homeassistant.components.http import StaticPathConfig
 
 from .const import (
-    ATTR_EXPIRES_AT, ATTR_EXPIRES_IN, ATTR_ICON, ATTR_ID, ATTR_KEY, ATTR_MESSAGE,
+    ATTR_ACTIONS, ATTR_EXPIRES_AT, ATTR_EXPIRES_IN, ATTR_ICON, ATTR_ID, ATTR_KEY, ATTR_MESSAGE,
     ATTR_PERSISTENT, ATTR_SEVERITY, ATTR_TITLE, ATTR_TOPIC, CONF_SEVERITY_COLORS, CONF_TOPIC_ID,
     CONF_TOPIC_COLOR, CONF_TOPIC_ICON, CONF_TOPIC_NAME, CONF_TOPICS,
     DATA_MANAGERS, DEFAULT_SEVERITY_COLORS, DOMAIN, PLATFORMS, SERVICE_CREATE, SERVICE_CREATE_SCHEDULED_EXPIRY,
@@ -41,6 +41,14 @@ DURATION_SCHEMA = vol.Any(
         vol.Optional("milliseconds"): vol.Coerce(int),
     }),
 )
+NOTIFICATION_ACTION_SCHEMA = vol.Schema({
+    vol.Required(ATTR_ICON): cv.icon,
+    vol.Required("label"): vol.All(cv.string, vol.Length(min=1)),
+    vol.Required("action"): cv.service,
+    vol.Optional("target"): dict,
+    vol.Optional("data"): dict,
+})
+NOTIFICATION_ACTIONS_SCHEMA = vol.Schema([NOTIFICATION_ACTION_SCHEMA])
 CREATE_FIELDS = {
     vol.Required(ATTR_TOPIC): cv.string,
     vol.Required(ATTR_MESSAGE): cv.string,
@@ -49,6 +57,7 @@ CREATE_FIELDS = {
     vol.Optional(ATTR_ICON): cv.icon,
     vol.Optional(ATTR_SEVERITY, default="info"): vol.In(SEVERITIES),
     vol.Optional(ATTR_PERSISTENT, default=False): cv.boolean,
+    vol.Optional(ATTR_ACTIONS, default=[]): NOTIFICATION_ACTIONS_SCHEMA,
 }
 CREATE_SCHEMA = vol.Schema(CREATE_FIELDS)
 CREATE_TIMED_SCHEMA = vol.Schema({
@@ -183,6 +192,11 @@ def _async_update_create_description(
             "required": True,
             "default": False,
             "selector": {"boolean": {}},
+        },
+        ATTR_ACTIONS: {
+            "name": "Actions",
+            "description": "Optional icon actions. Each item requires icon, label, and action; target and data are optional.",
+            "selector": {"object": {}},
         },
     }
     async_set_service_schema(

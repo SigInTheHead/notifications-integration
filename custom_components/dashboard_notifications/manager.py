@@ -18,6 +18,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     ATTR_EXPIRES_AT,
     ATTR_EXPIRES_IN,
+    ATTR_ACTIONS,
     ATTR_ICON,
     ATTR_ID,
     ATTR_KEY,
@@ -38,6 +39,20 @@ from .const import (
     STORAGE_KEY_PREFIX,
     STORAGE_VERSION,
 )
+
+# Values emitted by Home Assistant's ui_color selector. Keep these as literal
+# palette colours rather than theme variables: a configured notification colour
+# must not change because a theme redefines (for example) --red-color.
+UI_COLOR_HEX = {
+    "red": "#f44336", "pink": "#e91e63", "purple": "#926bc7",
+    "deep-purple": "#6e41ab", "indigo": "#3f51b5", "blue": "#2196f3",
+    "light-blue": "#03a9f4", "cyan": "#00bcd4", "teal": "#009688",
+    "green": "#4caf50", "light-green": "#8bc34a", "lime": "#cddc39",
+    "yellow": "#ffeb3b", "amber": "#ffc107", "orange": "#ff9800",
+    "deep-orange": "#ff6f22", "brown": "#795548", "light-grey": "#bdbdbd",
+    "grey": "#9e9e9e", "dark-grey": "#606060", "blue-grey": "#607d8b",
+    "black": "#000000", "white": "#ffffff",
+}
 
 _DURATION_RE = re.compile(
     r"^(?:(?P<days>\d+)d)?(?:(?P<hours>\d+)h)?(?:(?P<minutes>\d+)m)?(?:(?P<seconds>\d+)s)?$"
@@ -146,10 +161,8 @@ class NotificationManager:
             if isinstance(value, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", value):
                 result[severity] = value.lower()
                 continue
-            if isinstance(value, str) and re.fullmatch(r"[a-z]+(?:-[a-z]+)*", value):
-                # Values from Home Assistant's ui_color selector correspond to
-                # its theme colour variables (for example, blue or deep-purple).
-                result[severity] = f"var(--{value}-color)"
+            if isinstance(value, str) and value in UI_COLOR_HEX:
+                result[severity] = UI_COLOR_HEX[value]
                 continue
             # Configured RGB lists were used by the first implementation;
             # retain them so users are not forced to re-enter their colours.
@@ -195,8 +208,8 @@ class NotificationManager:
     def _as_css_color(value: str) -> str | None:
         if re.fullmatch(r"#[0-9a-fA-F]{6}", value):
             return value.lower()
-        if re.fullmatch(r"[a-z]+(?:-[a-z]+)*", value):
-            return f"var(--{value}-color)"
+        if value in UI_COLOR_HEX:
+            return UI_COLOR_HEX[value]
         return None
 
     @property
@@ -252,6 +265,8 @@ class NotificationManager:
                 "created_at": _as_utc_iso(now),
                 "expires_at": expiry,
             }
+            if data.get(ATTR_ACTIONS):
+                item[ATTR_ACTIONS] = data[ATTR_ACTIONS]
             for attribute in (ATTR_KEY, ATTR_TITLE, ATTR_SEVERITY):
                 if data.get(attribute) is not None:
                     item[attribute] = data[attribute]

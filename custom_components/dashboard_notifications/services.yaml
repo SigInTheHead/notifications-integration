@@ -49,6 +49,19 @@ create:
       default: false
       selector:
         boolean:
+    actions:
+      name: Actions
+      description: >-
+        Optional list of icon actions. Each item requires icon, label, and action;
+        target and data are optional. Use YAML/object mode to enter the list.
+      example:
+        - icon: mdi:check
+          label: Mark complete
+          action: input_button.press
+          target:
+            entity_id: input_button.washer_emptied
+      selector:
+        object:
 
 create_timed:
   name: Create timed notification
