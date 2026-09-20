@@ -27,7 +27,7 @@ Use `persistent: true` on any create action to prevent card dismissal. Persisten
 
 ## Notification actions
 
-Add an `actions` list to any create action to show icon buttons on the matching card notification. Every action requires an `icon`, user-facing `label`, and Home Assistant service in `action`. `target` and `data` are passed to that service as usual.
+Add an `actions` list to any create action to show icon buttons on the matching card notification. The list accepts one or more actions; the card displays one button for each action. Every action requires an `icon`, user-facing `label`, and Home Assistant service in `action`. `target` and `data` are passed to that service as usual.
 
 Set `dismiss: true` to remove the notification only after its action service succeeds. If the service fails, the notification remains visible and the dashboard shows an error.
 
@@ -48,4 +48,9 @@ Set `dismiss: true` to remove the notification only after its action service suc
         data:
           brightness_pct: 100
         dismiss: true
+      - icon: mdi:check
+        label: Mark bins ready
+        action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.bins_ready
 ```
