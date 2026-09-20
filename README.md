@@ -24,3 +24,28 @@ Create topics in the integration's **Configure** screen. Topics receive a genera
 Each create action returns `id` when Home Assistant is asked for an action response. A notification without a `key` appends to the feed; the same `key` replaces its existing item while retaining its generated `id`.
 
 Use `persistent: true` on any create action to prevent card dismissal. Persistent items may still expire when created with `create_timed` or `create_scheduled_expiry`, and they remain removable through `dashboard_notifications.dismiss` by `id` or `key`.
+
+## Notification actions
+
+Add an `actions` list to any create action to show icon buttons on the matching card notification. Every action requires an `icon`, user-facing `label`, and Home Assistant service in `action`. `target` and `data` are passed to that service as usual.
+
+Set `dismiss: true` to remove the notification only after its action service succeeds. If the service fails, the notification remains visible and the dashboard shows an error.
+
+```yaml
+- action: dashboard_notifications.create
+  data:
+    topic: 4efb1c3a-0000-0000-0000-000000000000
+    key: rubbish_reminder
+    title: Rubbish collection
+    message: Put the bins out tonight.
+    severity: info
+    actions:
+      - icon: mdi:lightbulb-on-outline
+        label: Turn on porch light
+        action: light.turn_on
+        target:
+          entity_id: light.porch
+        data:
+          brightness_pct: 100
+        dismiss: true
+```
