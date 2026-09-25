@@ -20,7 +20,7 @@ from homeassistant.components.http import StaticPathConfig
 
 from .const import (
     ATTR_ACTIONS, ATTR_EXPIRES_AT, ATTR_EXPIRES_IN, ATTR_ICON, ATTR_ID, ATTR_KEY, ATTR_MESSAGE,
-    ATTR_PERSISTENT, ATTR_SEVERITY, ATTR_TITLE, ATTR_TOPIC, CONF_SEVERITY_COLORS, CONF_TOPIC_ID,
+    ATTR_PERSISTENT, ATTR_SEVERITY, ATTR_SHOW_TIMESTAMP, ATTR_TITLE, ATTR_TOPIC, CONF_SEVERITY_COLORS, CONF_TOPIC_ID,
     CONF_TOPIC_COLOR, CONF_TOPIC_ICON, CONF_TOPIC_NAME, CONF_TOPICS,
     DATA_MANAGERS, DEFAULT_SEVERITY_COLORS, DOMAIN, PLATFORMS, SERVICE_CREATE, SERVICE_CREATE_SCHEDULED_EXPIRY,
     SERVICE_CREATE_TIMED, SERVICE_DISMISS, SEVERITIES, SIGNAL_FEED_UPDATED,
@@ -58,6 +58,7 @@ CREATE_FIELDS = {
     vol.Optional(ATTR_ICON): cv.icon,
     vol.Optional(ATTR_SEVERITY, default="info"): vol.In(SEVERITIES),
     vol.Optional(ATTR_PERSISTENT, default=False): cv.boolean,
+    vol.Optional(ATTR_SHOW_TIMESTAMP, default=True): cv.boolean,
     vol.Optional(ATTR_ACTIONS, default=[]): NOTIFICATION_ACTIONS_SCHEMA,
 }
 CREATE_SCHEMA = vol.Schema(CREATE_FIELDS)
@@ -192,6 +193,13 @@ def _async_update_create_description(
             "description": "Cannot be dismissed from a dashboard card.",
             "required": True,
             "default": False,
+            "selector": {"boolean": {}},
+        },
+        ATTR_SHOW_TIMESTAMP: {
+            "name": "Show created date and time",
+            "description": "Display this notification's creation date and time on dashboard cards.",
+            "required": True,
+            "default": True,
             "selector": {"boolean": {}},
         },
         ATTR_ACTIONS: {

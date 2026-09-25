@@ -25,6 +25,7 @@ from .const import (
     ATTR_MESSAGE,
     ATTR_PERSISTENT,
     ATTR_SEVERITY,
+    ATTR_SHOW_TIMESTAMP,
     ATTR_TITLE,
     ATTR_TOPIC,
     CONF_TOPIC_ID,
@@ -262,6 +263,7 @@ class NotificationManager:
                 or self._topics[topic_id].get(CONF_TOPIC_ICON)
                 or DEFAULT_ICONS[data.get(ATTR_SEVERITY, "info")],
                 ATTR_PERSISTENT: bool(data.get(ATTR_PERSISTENT, False)),
+                ATTR_SHOW_TIMESTAMP: bool(data.get(ATTR_SHOW_TIMESTAMP, True)),
                 "created_at": _as_utc_iso(now),
                 "expires_at": expiry,
             }

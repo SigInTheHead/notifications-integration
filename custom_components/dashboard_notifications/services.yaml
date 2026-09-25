@@ -49,6 +49,13 @@ create:
       default: false
       selector:
         boolean:
+    show_timestamp:
+      name: Show created date and time
+      description: Display this notification's creation date and time on dashboard cards.
+      required: true
+      default: true
+      selector:
+        boolean:
     actions:
       name: Actions
       description: >-

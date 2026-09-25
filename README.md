@@ -23,6 +23,8 @@ Create topics in the integration's **Configure** screen. Topics receive a genera
 
 Each create action returns `id` when Home Assistant is asked for an action response. A notification without a `key` appends to the feed; the same `key` replaces its existing item while retaining its generated `id`.
 
+Use the **Show created date and time** toggle in the notification creation action to choose whether that individual notification displays its creation timestamp on dashboard cards. It is enabled by default.
+
 Use `persistent: true` on any create action to prevent card dismissal. Persistent items may still expire when created with `create_timed` or `create_scheduled_expiry`, and they remain removable through `dashboard_notifications.dismiss` by `id` or `key`.
 
 ## Notification actions

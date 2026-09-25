@@ -22,6 +22,7 @@ ATTR_SEVERITY = "severity"
 ATTR_EXPIRES_IN = "expires_in"
 ATTR_EXPIRES_AT = "expires_at"
 ATTR_PERSISTENT = "persistent"
+ATTR_SHOW_TIMESTAMP = "show_timestamp"
 ATTR_ACTIONS = "actions"
 
 CONF_TOPICS = "topics"
